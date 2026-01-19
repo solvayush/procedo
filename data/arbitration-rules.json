@@ -1,0 +1,105 @@
+{
+  "institution": "ICSID",
+  "document_type": "arbitration_rules",
+  "rules_version": "ICSID Arbitration Rules 2022",
+  "rules": [
+    {
+      "ref": "Arbitration Rule 1",
+      "mandatory": true,
+      "summary": "Arbitration proceedings are governed by the ICSID Convention, the Arbitration Rules, and any party agreement. The Rules operate as binding constraints.",
+      "ai_usage": "classification_only",
+      "parameter_tag": "rule_hierarchy"
+    },
+    {
+      "ref": "Arbitration Rule 2",
+      "mandatory": true,
+      "summary": "Requires identification of parties and authorised representatives and submission of proper authority documentation.",
+      "ai_usage": "extraction_and_flagging",
+      "parameter_tag": "party_representation"
+    },
+    {
+      "ref": "Arbitration Rule 6",
+      "mandatory": true,
+      "summary": "Governs filing, routing, and service of documents through the ICSID Secretariat to ensure equal notice.",
+      "ai_usage": "service_completeness_checks",
+      "parameter_tag": "document_service"
+    },
+    {
+      "ref": "Arbitration Rule 7",
+      "mandatory": false,
+      "summary": "Allows the Tribunal to determine the language of the arbitration, subject to party submissions and fairness.",
+      "ai_usage": "language_impact_analysis",
+      "parameter_tag": "procedural_language"
+    },
+    {
+      "ref": "Arbitration Rule 22",
+      "mandatory": true,
+      "summary": "Establishes strict timelines and procedure for proposals to disqualify arbitrators.",
+      "ai_usage": "deadline_monitoring",
+      "parameter_tag": "arbitrator_challenges"
+    },
+    {
+      "ref": "Arbitration Rule 29",
+      "mandatory": true,
+      "summary": "Requires a first procedural session to organise the arbitration and determine the procedural framework.",
+      "ai_usage": "agenda_extraction",
+      "parameter_tag": "procedural_calendar"
+    },
+    {
+      "ref": "Arbitration Rule 30",
+      "mandatory": true,
+      "summary": "Regulates written submissions and prevents unscheduled or excessive filings without Tribunal authorisation.",
+      "ai_usage": "submission_tracking",
+      "parameter_tag": "written_procedure"
+    },
+    {
+      "ref": "Arbitration Rule 32",
+      "mandatory": true,
+      "summary": "Regulates hearings, including format, conduct, and the opportunity for parties to present oral arguments.",
+      "ai_usage": "hearing_structure_benchmarking",
+      "parameter_tag": "hearing_management"
+    },
+    {
+      "ref": "Arbitration Rule 35",
+      "mandatory": true,
+      "summary": "Requires decisions of the Tribunal to be taken by a majority of its members.",
+      "ai_usage": "deviation_flagging_only",
+      "parameter_tag": "tribunal_decision_method"
+    },
+    {
+      "ref": "Arbitration Rule 36",
+      "mandatory": true,
+      "summary": "Confirms the Tribunal’s power to call for evidence and regulate the burden of proof.",
+      "ai_usage": "procedural_risk_flagging",
+      "parameter_tag": "evidence_management"
+    },
+    {
+      "ref": "Arbitration Rule 42",
+      "mandatory": false,
+      "summary": "Allows bifurcation of proceedings at the discretion of the Tribunal.",
+      "ai_usage": "historical_outcome_analysis",
+      "parameter_tag": "bifurcation_analysis"
+    },
+    {
+      "ref": "Arbitration Rule 43",
+      "mandatory": false,
+      "summary": "Regulates preliminary objections, including timing and sequencing with merits.",
+      "ai_usage": "timeline_optimisation",
+      "parameter_tag": "preliminary_objections"
+    },
+    {
+      "ref": "Arbitration Rule 58",
+      "mandatory": true,
+      "summary": "Defines closure of proceedings and triggers the timeline for rendering the award.",
+      "ai_usage": "award_countdown_tracking",
+      "parameter_tag": "award_timeline"
+    },
+    {
+      "ref": "Chapter XII – Expedited Arbitration",
+      "mandatory": false,
+      "summary": "Provides an optional expedited arbitration regime with compressed timelines and procedural simplifications.",
+      "ai_usage": "suitability_and_deadline_monitoring",
+      "parameter_tag": "expedited_procedure"
+    }
+  ]
+}

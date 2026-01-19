@@ -1,0 +1,54 @@
+{
+  "institution": "ICSID",
+  "document_type": "convention",
+  "rules": [
+    {
+      "ref": "Convention Article 37",
+      "title": "Constitution of the Tribunal",
+      "mandatory": true,
+      "summary": "Defines how the arbitral tribunal is constituted and prevents proceedings from being frustrated by lack of agreement.",
+      "raw_scope": "tribunal constitution",
+      "parameter_tag": "tribunal_composition"
+    },
+    {
+      "ref": "Convention Article 39",
+      "title": "Nationality of Arbitrators",
+      "mandatory": true,
+      "summary": "Requires that the majority of arbitrators differ in nationality from the disputing parties unless otherwise agreed.",
+      "raw_scope": "tribunal independence",
+      "parameter_tag": "tribunal_independence"
+    },
+    {
+      "ref": "Convention Article 41",
+      "title": "Competence of the Tribunal",
+      "mandatory": true,
+      "summary": "Empowers the tribunal to determine its own jurisdiction and decide jurisdictional objections.",
+      "raw_scope": "jurisdictional authority",
+      "parameter_tag": "jurisdiction_handling"
+    },
+    {
+      "ref": "Convention Article 44",
+      "title": "Applicable Procedure",
+      "mandatory": true,
+      "summary": "Establishes the procedural hierarchy: Convention, Arbitration Rules, and party agreement, with limited tribunal discretion.",
+      "raw_scope": "procedural hierarchy and discretion limits",
+      "parameter_tag": "procedural_discretion"
+    },
+    {
+      "ref": "Convention Articles 48–49",
+      "title": "Award and Supplementation",
+      "mandatory": true,
+      "summary": "Governs decision-making, form of awards, and correction or supplementation of omitted issues.",
+      "raw_scope": "decision integrity",
+      "parameter_tag": "award_structure"
+    },
+    {
+      "ref": "Convention Article 52(1)(d)",
+      "title": "Annulment – Fundamental Rule of Procedure",
+      "mandatory": true,
+      "summary": "Provides annulment where there is a serious departure from a fundamental rule of procedure.",
+      "raw_scope": "annulment safeguard",
+      "parameter_tag": "fundamental_procedure_breach"
+    }
+  ]
+}
