@@ -16,11 +16,19 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { FileText, Gavel, Scale, Clock, CheckCircle2, ChevronRight, Settings, Loader2 } from "lucide-react";
 import { seedRules, checkRulesStatus } from "@/actions/seed-rules";
+import Link from "next/link";
 
 export function DashboardView({
     organizationName,
+    recentCases: propRecentCases
 }: {
     organizationName?: string;
+    recentCases?: Array<{
+        id: string;
+        caseTitle: string;
+        status: string;
+        createdAt: Date;
+    }>;
 }) {
     const { isLoaded, userId, orgId } = useAuth();
 
@@ -58,12 +66,13 @@ export function DashboardView({
     };
 
     // Mock data
-    const arbitratorsCount = 12;
-    const recentCases = [
-        { title: "Case ARB-2023-001", status: "Drafting", date: "2 days ago" },
-        { title: "Case ARB-2023-004", status: "Pending Review", date: "5 days ago" },
-        { title: "Case ARB-2023-007", status: "Completed", date: "1 week ago" },
+    const mockCases = [
+        { id: "1", caseTitle: "Case ARB-2023-001", status: "analyzed", createdAt: new Date() },
+        { id: "2", caseTitle: "Case ARB-2023-004", status: "pending", createdAt: new Date() },
+        { id: "3", caseTitle: "Case ARB-2023-007", status: "analyzed", createdAt: new Date() },
     ];
+    const recentCases = propRecentCases && propRecentCases.length > 0 ? propRecentCases : mockCases;
+    const arbitratorsCount = 12;
 
     if (!isLoaded || !userId) return null;
 
@@ -143,23 +152,38 @@ export function DashboardView({
                                 <CardHeader>
                                     <CardTitle className="text-lg flex items-center gap-2">
                                         <Clock className="h-5 w-5 text-muted-foreground" />
-                                        Recent Activity
+                                        Recent Cases
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     {recentCases.map((c, i) => (
-                                        <div key={i} className="flex justify-between items-center group cursor-pointer hover:bg-secondary/50 p-2 rounded-md transition-colors">
+                                        <Link
+                                            key={c.id}
+                                            href={`/orgs/${organizationName || 'demo'}/cases/${c.id}`}
+                                            className="flex justify-between items-center group cursor-pointer hover:bg-secondary/50 p-2 rounded-md transition-colors"
+                                        >
                                             <div>
-                                                <div className="font-medium text-sm group-hover:text-primary transition-colors">{c.title}</div>
-                                                <div className="text-xs text-muted-foreground">{c.date}</div>
+                                                <div className="font-medium text-sm group-hover:text-primary transition-colors">
+                                                    {c.caseTitle}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {new Date(c.createdAt).toLocaleDateString('en-US', {
+                                                        month: 'short',
+                                                        day: 'numeric'
+                                                    })}
+                                                </div>
                                             </div>
-                                            <Badge variant="secondary" className="text-[10px]">{c.status}</Badge>
-                                        </div>
+                                            <Badge variant="secondary" className="text-[10px] capitalize">
+                                                {c.status}
+                                            </Badge>
+                                        </Link>
                                     ))}
                                 </CardContent>
                                 <CardFooter>
-                                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground hover:text-foreground">
-                                        View All History <ChevronRight className="ml-1 h-3 w-3" />
+                                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground hover:text-foreground" asChild>
+                                        <Link href={`/orgs/${organizationName || 'demo'}/cases`}>
+                                            View All History <ChevronRight className="ml-1 h-3 w-3" />
+                                        </Link>
                                     </Button>
                                 </CardFooter>
                             </Card>

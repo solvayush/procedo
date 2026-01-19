@@ -44,6 +44,13 @@ interface Recommendation {
             recommendations: string[];
             rule_ref: string;
         };
+        efficiency_suggestions?: Array<{
+            type: string;
+            suggestion: string;
+            rationale: string;
+            potential_impact: string;
+            estimated_savings?: string;
+        }>;
         mandatory_flags?: Array<{
             issue: string;
             severity: string;
@@ -67,22 +74,74 @@ export function RecommendationDisplay({ data }: { data: string }) {
 
     try {
         parsed = JSON.parse(cleanedData);
+
+        // Check if Claude detected an invalid document
+        if (parsed && typeof parsed === 'object' && 'error' in parsed && (parsed as any).error === 'invalid_document') {
+            return (
+                <Card className="border-destructive/50 bg-destructive/5">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="h-5 w-5" />
+                            Invalid Document
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-foreground">
+                            {(parsed as any).message || "This does not appear to be a valid case document."}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                            Please upload an arbitration-related document such as a procedural order, memorial, or submission.
+                        </p>
+                    </CardContent>
+                </Card>
+            );
+        }
     } catch (e) {
-        // If not valid JSON yet, show a loading state or the raw streaming text
+        // If not valid JSON yet, show progressive loading messages
+        const loadingMessages = [
+            "📄 Extracting document content...",
+            "🔍 Analyzing case context...",
+            "⚖️ Matching applicable ICSID rules...",
+            "📊 Querying historical precedents...",
+            "🤖 Generating AI recommendations...",
+            "✨ Finalizing analysis..."
+        ];
+
+        // Cycle through messages based on data length (rough progress indicator)
+        const progressIndex = Math.min(
+            Math.floor(cleanedData.length / 100),
+            loadingMessages.length - 1
+        );
+
         return (
             <div className="space-y-4">
                 <Card className="border-primary/20">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Loader2 className="h-5 w-5 text-primary animate-spin" />
-                            Generating Recommendations...
+                            Generating Recommendations
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="prose dark:prose-invert max-w-none">
-                            <pre className="whitespace-pre-wrap bg-muted/50 p-4 rounded text-xs font-mono">
-                                {cleanedData || "Waiting for response..."}
-                            </pre>
+                        <div className="space-y-3">
+                            {loadingMessages.map((msg, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`flex items-center gap-2 p-3 rounded-lg transition-all ${idx <= progressIndex
+                                        ? 'bg-primary/10 text-foreground'
+                                        : 'bg-muted/30 text-muted-foreground'
+                                        }`}
+                                >
+                                    {idx < progressIndex ? (
+                                        <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                                    ) : idx === progressIndex ? (
+                                        <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
+                                    ) : (
+                                        <div className="h-4 w-4 shrink-0" />
+                                    )}
+                                    <span className="text-sm">{msg}</span>
+                                </div>
+                            ))}
                         </div>
                     </CardContent>
                 </Card>
@@ -309,6 +368,58 @@ export function RecommendationDisplay({ data }: { data: string }) {
                         </ul>
                         <Separator />
                         <span className="text-xs text-muted-foreground">{recommendations.evidence_management.rule_ref}</span>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Efficiency & Cost Optimization Suggestions */}
+            {recommendations?.efficiency_suggestions && recommendations.efficiency_suggestions.length > 0 && (
+                <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/20">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                                <Info className="h-5 w-5" />
+                                Efficiency & Cost Optimization
+                            </CardTitle>
+                            <Badge variant="outline" className="text-xs border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-400">
+                                AI Suggestions
+                            </Badge>
+                        </div>
+                        <CardDescription className="flex items-start gap-2">
+                            <AlertTriangle className="h-3 w-3 text-amber-600 mt-0.5 shrink-0" />
+                            <span className="text-xs">
+                                These are AI-generated suggestions for potential time and cost savings. Please verify all recommendations independently.
+                            </span>
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {recommendations.efficiency_suggestions.map((suggestion, i) => (
+                            <div key={i} className="bg-background p-4 rounded-lg border border-blue-200 dark:border-blue-900">
+                                <div className="flex items-start justify-between mb-2">
+                                    <Badge
+                                        variant="secondary"
+                                        className={`text-xs ${suggestion.potential_impact === 'high'
+                                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                                : suggestion.potential_impact === 'medium'
+                                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                            }`}
+                                    >
+                                        {suggestion.potential_impact} impact
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs capitalize">
+                                        {suggestion.type.replace(/_/g, ' ')}
+                                    </Badge>
+                                </div>
+                                <h4 className="font-semibold text-foreground mb-2">{suggestion.suggestion}</h4>
+                                <p className="text-sm text-muted-foreground mb-2">{suggestion.rationale}</p>
+                                {suggestion.estimated_savings && (
+                                    <p className="text-xs text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-950 p-2 rounded">
+                                        💡 Estimated savings: {suggestion.estimated_savings}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
                     </CardContent>
                 </Card>
             )}

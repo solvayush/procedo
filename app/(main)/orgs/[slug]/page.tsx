@@ -1,13 +1,16 @@
 import { auth } from "@clerk/nextjs/server";
 import { OrganizationList } from "@clerk/nextjs";
 import { DashboardView } from "@/components/dashboard-view";
+import { db } from "@/db";
+import { cases } from "@/db/schema/cases";
+import { eq, desc } from "drizzle-orm";
 
 export default async function Page({
     params,
 }: {
     params: Promise<{ slug: string }>;
 }) {
-    const { orgSlug } = await auth();
+    const { orgSlug, orgId } = await auth();
     const { slug } = await params;
 
     if (slug !== orgSlug) {
@@ -29,5 +32,16 @@ export default async function Page({
         );
     }
 
-    return <DashboardView organizationName={slug} />;
+    // Fetch recent cases for this organization
+    const recentCases = orgId
+        ? await db
+            .select()
+            .from(cases)
+            .where(eq(cases.orgId, orgId))
+            .orderBy(desc(cases.createdAt))
+            .limit(3)
+        : [];
+
+    return <DashboardView organizationName={slug} recentCases={recentCases} />;
 }
+

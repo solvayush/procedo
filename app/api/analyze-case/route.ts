@@ -3,6 +3,10 @@ import { NextRequest } from "next/server";
 import PDFParser from "pdf2json";
 import { generateRecommendations } from "@/lib/recommendation-engine";
 import { auth } from "@clerk/nextjs/server";
+import { put } from "@vercel/blob";
+import { db } from "@/db";
+import { cases } from "@/db/schema/cases";
+import { eq } from "drizzle-orm";
 
 export const runtime = "nodejs";
 export const maxDuration = 60; // 60 seconds for complex analysis
@@ -32,6 +36,7 @@ export async function POST(req: NextRequest) {
         // 2. Parse form data
         const formData = await req.formData();
         const file = formData.get("file") as File;
+        const caseTitle = (formData.get("caseTitle") as string) || file.name.replace('.pdf', '');
 
         if (!file) {
             return new Response(JSON.stringify({ error: "No file provided" }), { status: 400 });
@@ -46,31 +51,84 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // 4. Extract text from PDF
-        const text = await extractPDFText(file);
+        // 4. Upload file to Vercel Blob
+        const blob = await put(`cases/${orgId}/${Date.now()}-${file.name}`, file, {
+            access: 'public',
+        });
 
-        if (!text || text.trim().length === 0) {
+        // 5. Create case record in database
+        const [caseRecord] = await db.insert(cases).values({
+            orgId,
+            userId,
+            caseTitle,
+            fileName: file.name,
+            fileSize: file.size,
+            fileUrl: blob.url,
+            status: 'pending',
+        }).returning();
+
+        // 6. Extract text from PDF
+        let text: string;
+        try {
+            text = await extractPDFText(file);
+            if (!text || text.trim().length === 0) {
+                throw new Error("Could not extract text from PDF");
+            }
+        } catch (error) {
+            // Update case with error
+            await db.update(cases)
+                .set({
+                    status: 'error',
+                    errorMessage: 'Could not extract text from PDF'
+                })
+                .where(eq(cases.id, caseRecord.id));
+
             return new Response(JSON.stringify({ error: "Could not extract text from PDF" }), {
                 status: 400,
             });
         }
 
-        // 5. Generate recommendations (streaming)
+        // 7. Generate recommendations (streaming)
         const stream = await generateRecommendations({
             text,
             orgId,
         });
 
-        // 6. Convert Claude stream to HTTP stream
+        // 8. Collect the full response to save to database
+        let fullRecommendations = "";
         const encoder = new TextEncoder();
         const readableStream = new ReadableStream({
             async start(controller) {
                 try {
                     for await (const chunk of stream) {
                         if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
-                            controller.enqueue(encoder.encode(chunk.delta.text));
+                            const text = chunk.delta.text;
+                            fullRecommendations += text;
+                            controller.enqueue(encoder.encode(text));
                         }
                     }
+
+                    // Save recommendations to database after streaming completes
+                    try {
+                        const cleanedData = fullRecommendations.trim()
+                            .replace(/^```json\s*/i, '')
+                            .replace(/^```\s*/i, '')
+                            .replace(/\s*```$/i, '')
+                            .trim();
+
+                        const parsedRecommendations = JSON.parse(cleanedData);
+
+                        await db.update(cases)
+                            .set({
+                                status: 'analyzed',
+                                aiRecommendations: parsedRecommendations,
+                                analyzedAt: new Date()
+                            })
+                            .where(eq(cases.id, caseRecord.id));
+                    } catch (e) {
+                        console.error("Failed to save recommendations:", e);
+                    }
+
                     controller.close();
                 } catch (error) {
                     controller.error(error);
@@ -83,6 +141,7 @@ export async function POST(req: NextRequest) {
                 "Content-Type": "text/event-stream",
                 "Cache-Control": "no-cache",
                 Connection: "keep-alive",
+                "X-Case-Id": caseRecord.id, // Send case ID in header
             },
         });
     } catch (error) {
