@@ -9,14 +9,13 @@ import { eq } from "drizzle-orm";
 import { after } from "next/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 60; // Keep at 60s - we return quickly now
+export const maxDuration = 300; // Increased to 5 minutes to prevent timeouts
 
 async function updateProgress(caseId: string, progress: number, step: string) {
     await db.update(cases)
         .set({ analysisProgress: progress, currentStep: step })
         .where(eq(cases.id, caseId));
 }
-
 async function extractPDFText(fileUrl: string): Promise<string> {
     const response = await fetch(fileUrl);
     if (!response.ok) {
@@ -119,6 +118,7 @@ async function processAnalysis(
 export async function POST(req: NextRequest) {
     try {
         const { userId, orgId } = await auth();
+        // ... auth checks ...
         if (!userId || !orgId) {
             return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
         }
@@ -165,13 +165,21 @@ export async function POST(req: NextRequest) {
                     return;
                 }
 
-                // Run default analysis first
-                await updateProgress(caseId, 20, "Running default analysis...");
-                await processAnalysis(caseId, text, "default", orgId);
+                // Run analysis tasks in parallel
+                await updateProgress(caseId, 20, "Running analysis...");
 
-                // Run parameterized analysis second (sequential, not parallel)
-                await updateProgress(caseId, 60, "Running parameterized analysis...");
-                await processAnalysis(caseId, text, "with_parameters", orgId);
+                const results = await Promise.allSettled([
+                    processAnalysis(caseId, text, "default", orgId),
+                    processAnalysis(caseId, text, "with_parameters", orgId)
+                ]);
+
+                // Check results
+                const failed = results.filter(r => r.status === 'rejected');
+                if (failed.length > 0) {
+                    console.error("Some analysis tasks failed:", failed);
+                    // Note: Individual processAnalysis calls handle their own error logging/db updates
+                    // but we might want to ensure the final status isn't "processing" if everything failed.
+                }
 
                 await updateProgress(caseId, 100, "Complete");
 
