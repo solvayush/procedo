@@ -1,7 +1,6 @@
 import { db } from "@/db";
 import { institutionRules } from "@/db/schema/schema";
-import { proceduralOrders, proceduralEvents, proceduralTimelines } from "@/db/schema/procedural";
-import { eq, and, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 import procedoParameters from "@/data/procedo-parameters.json";
 
@@ -9,14 +8,27 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// Simple in-memory cache (can be upgraded to Redis later)
+const rulesCache = new Map<string, { data: any[], timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 interface CaseContext {
   text: string;
   orgId: string;
   analysisMode?: "default" | "with_parameters";
+  jurisdiction?: string; // Optional pre-provided jurisdiction to skip classification
 }
 
 
-export async function matchRules(orgId: string) {
+export async function matchRules(orgId: string, useCache = true) {
+  // Check cache first
+  if (useCache) {
+    const cached = rulesCache.get(orgId);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data;
+    }
+  }
+
   // Get all rules for the organization, prioritized by hierarchy
   const rules = await db
     .select()
@@ -24,66 +36,29 @@ export async function matchRules(orgId: string) {
     .where(eq(institutionRules.orgId, orgId))
     .orderBy(institutionRules.hierarchyLevel);
 
+  // Update cache
+  rulesCache.set(orgId, { data: rules, timestamp: Date.now() });
+
   return rules;
 }
 
-export async function findPrecedents(orgId: string, eventTypes?: string[]) {
-  // Get historical procedural events with their parent orders
-  const query = db
-    .select({
-      event: proceduralEvents,
-      order: proceduralOrders,
-    })
-    .from(proceduralEvents)
-    .innerJoin(proceduralOrders, eq(proceduralEvents.proceduralOrderId, proceduralOrders.id))
-    .where(eq(proceduralOrders.orgId, orgId))
-    .limit(50);
 
-  const precedents = await query;
-
-  // Group by event type for easier analysis
-  const grouped: Record<string, any[]> = {};
-  for (const p of precedents) {
-    const type = p.event.eventType;
-    if (!grouped[type]) grouped[type] = [];
-    grouped[type].push(p);
-  }
-
-  return grouped;
-}
-
-export async function findTimelineBenchmarks(orgId: string) {
-  // Get timeline data from historical orders
-  const timelines = await db
-    .select()
-    .from(proceduralTimelines)
-    .innerJoin(proceduralOrders, eq(proceduralTimelines.proceduralOrderId, proceduralOrders.id))
-    .where(eq(proceduralOrders.orgId, orgId))
-    .limit(100);
-
-  // Calculate averages by phase
-  const benchmarks: Record<string, { avg: number; count: number }> = {};
-  for (const t of timelines) {
-    const phase = t.procedural_timelines.phase;
-    if (!benchmarks[phase]) {
-      benchmarks[phase] = { avg: 0, count: 0 };
-    }
-    benchmarks[phase].avg += t.procedural_timelines.days;
-    benchmarks[phase].count += 1;
-  }
-
-  // Finalize averages
-  for (const phase in benchmarks) {
-    benchmarks[phase].avg = Math.round(benchmarks[phase].avg / benchmarks[phase].count);
-  }
-
-  return benchmarks;
-}
 
 // ... imports
 // (Note: We need to import the response type if we want to be strict, but for now we infer)
 
-async function classifyDocument(text: string): Promise<{ is_icsid: boolean; jurisdiction: string; rationale: string }> {
+export async function classifyDocument(
+  text: string,
+  options?: { providedJurisdiction?: string }
+): Promise<{ is_icsid: boolean; jurisdiction: string; rationale: string }> {
+  // Skip AI call if jurisdiction provided
+  if (options?.providedJurisdiction) {
+    return {
+      is_icsid: options.providedJurisdiction === "ICSID",
+      jurisdiction: options.providedJurisdiction,
+      rationale: "User-provided jurisdiction"
+    };
+  }
   const system = `You are an expert legal classifier. Determine the jurisdiction of this arbitration document.
   
   OUTPUT JSON ONLY:
@@ -114,8 +89,6 @@ async function classifyDocument(text: string): Promise<{ is_icsid: boolean; juri
 export function buildRecommendationPrompt(
   caseText: string,
   rules: any[],
-  precedents: Record<string, any[]>,
-  timelines: Record<string, any>,
   jurisdiction: string = "ICSID"
 ) {
   const isIcsid = jurisdiction === "ICSID";
@@ -145,23 +118,16 @@ YOUR CORE MISSION:
 3. **Ensure Compliance**: Verify strict adherence to ${isIcsid ? "ICSID Convention & Rules" : "International Standards"}.
 
 APPLICABLE RULES (${isIcsid ? "Institutional" : "Reference"}):
-${JSON.stringify(rules.slice(0, 10), null, 2)}
-
-HISTORICAL PRECEDENTS (Context only):
 ${JSON.stringify(
-    Object.entries(precedents)
-      .slice(0, 5)
-      .map(([type, events]) => ({
-        type,
-        count: events.length,
-        decisions: events.slice(0, 3).map((e) => e.event.decisionValue),
-      })),
+    rules.slice(0, 10).map(r => ({
+      id: r.id,
+      title: r.title,
+      category: r.category || 'General',
+      hierarchyLevel: r.hierarchyLevel
+    })),
     null,
     2
   )}
-
-TIMELINE BENCHMARKS:
-${JSON.stringify(timelines, null, 2)}
 
 OUTPUT SCHEMA - PROCEDO ANALYSIS REPORT:
 {
@@ -258,8 +224,6 @@ OUTPUT SCHEMA - PROCEDO ANALYSIS REPORT:
 export function buildParameterizedPrompt(
   caseText: string,
   rules: any[],
-  precedents: Record<string, any[]>,
-  timelines: Record<string, any>,
   jurisdiction: string = "ICSID"
 ) {
   const isIcsid = jurisdiction === "ICSID";
@@ -292,23 +256,16 @@ For these provisions, suggest improvements that save time/cost without compromis
 ${JSON.stringify(procedoParameters.optimizable_provisions, null, 2)}
 
 APPLICABLE INSTITUTIONAL RULES (ALL):
-${JSON.stringify(rules, null, 2)}
-
-HISTORICAL PRECEDENTS:
 ${JSON.stringify(
-    Object.entries(precedents)
-      .slice(0, 10)
-      .map(([type, events]) => ({
-        type,
-        count: events.length,
-        decisions: events.slice(0, 3).map((e) => e.event.decisionValue),
-      })),
+    rules.slice(0, 15).map(r => ({
+      id: r.id,
+      title: r.title,
+      category: r.category || 'General',
+      hierarchyLevel: r.hierarchyLevel
+    })),
     null,
     2
   )}
-
-TIMELINE BENCHMARKS:
-${JSON.stringify(timelines, null, 2)}
 
 COMPLIANCE SCORING:
 Score the document using these levels:
@@ -402,23 +359,27 @@ OUTPUT SCHEMA (Parameterized Analysis):
 }
 
 export async function generateRecommendations(caseContext: CaseContext) {
-  const { text, orgId, analysisMode = "default" } = caseContext;
+  const { text, orgId, analysisMode = "default", jurisdiction: providedJurisdiction } = caseContext;
 
-  // 1. Classification Step
-  // We classify first to understand jurisdiction
-  const classification = await classifyDocument(text);
-  const jurisdiction = classification.jurisdiction || (classification.is_icsid ? "ICSID" : "General Commercial");
+  // Parallelize classification and rules fetching for better performance
+  const [classificationResult, rules] = await Promise.all([
+    providedJurisdiction
+      ? Promise.resolve({
+        is_icsid: providedJurisdiction === "ICSID",
+        jurisdiction: providedJurisdiction,
+        rationale: "Pre-provided jurisdiction"
+      })
+      : classifyDocument(text),
+    matchRules(orgId, true) // Use cache
+  ]);
 
-  // 2. Query database for rules/precedents
-  // (We still load these even if non-ICSID, as they might provide good reference 'benchmarks')
-  const rules = await matchRules(orgId);
-  const precedents = await findPrecedents(orgId);
-  const timelines = await findTimelineBenchmarks(orgId);
+  const jurisdiction = classificationResult.jurisdiction ||
+    (classificationResult.is_icsid ? "ICSID" : "General Commercial");
 
-  // 3. Build prompt based on analysis mode AND jurisdiction
+  // Build prompt based on analysis mode AND jurisdiction
   const { system, userMessage } = analysisMode === "with_parameters"
-    ? buildParameterizedPrompt(text, rules, precedents, timelines, jurisdiction)
-    : buildRecommendationPrompt(text, rules, precedents, timelines, jurisdiction);
+    ? buildParameterizedPrompt(text, rules, jurisdiction)
+    : buildRecommendationPrompt(text, rules, jurisdiction);
 
   // 4. Call Claude with streaming
   const stream = anthropic.messages.stream({

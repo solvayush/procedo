@@ -38,12 +38,18 @@ async function processAnalysis(
     caseId: string,
     text: string,
     analysisMode: "default" | "with_parameters",
-    orgId: string
+    orgId: string,
+    jurisdiction?: string  // NEW: Optional pre-computed jurisdiction
 ) {
     try {
         await updateProgress(caseId, 20, "Starting AI analysis...");
 
-        const stream = await generateRecommendations({ text, orgId, analysisMode });
+        const stream = await generateRecommendations({
+            text,
+            orgId,
+            analysisMode,
+            jurisdiction  // Pass pre-computed jurisdiction if available
+        });
         let fullRecommendations = "";
 
         await updateProgress(caseId, 40, "AI is analyzing document...");
@@ -165,12 +171,18 @@ export async function POST(req: NextRequest) {
                     return;
                 }
 
-                // Run analysis tasks in parallel
-                await updateProgress(caseId, 20, "Running analysis...");
+                // Classify document ONCE before running both analyses
+                const { classifyDocument } = await import("@/lib/recommendation-engine");
+                const classification = await classifyDocument(text, {});
+                const jurisdiction = classification.jurisdiction ||
+                    (classification.is_icsid ? "ICSID" : "General Commercial");
 
+                await updateProgress(caseId, 25, `Detected jurisdiction: ${jurisdiction}`);
+
+                // Run both analysis tasks in parallel, sharing the jurisdiction
                 const results = await Promise.allSettled([
-                    processAnalysis(caseId, text, "default", orgId),
-                    processAnalysis(caseId, text, "with_parameters", orgId)
+                    processAnalysis(caseId, text, "default", orgId, jurisdiction),
+                    processAnalysis(caseId, text, "with_parameters", orgId, jurisdiction)
                 ]);
 
                 // Check results

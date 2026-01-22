@@ -334,9 +334,11 @@ export function RecommendationDisplay({ data }: { data: string }) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            <div>
-                                <Badge className="mb-2">{recommendations.language.recommendation}</Badge>
-                                <p className="text-sm text-muted-foreground leading-relaxed">
+                            <div className="space-y-2">
+                                <Badge className="max-w-full wrap-break-word whitespace-normal leading-relaxed h-auto py-1.5">
+                                    {recommendations.language.recommendation}
+                                </Badge>
+                                <p className="text-sm text-muted-foreground leading-relaxed mt-3">
                                     {recommendations.language.reasoning}
                                 </p>
                             </div>
@@ -363,18 +365,20 @@ export function RecommendationDisplay({ data }: { data: string }) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Badge className="capitalize">{recommendations.bifurcation.recommendation}</Badge>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge className="capitalize max-w-full wrap-break-word whitespace-normal h-auto py-1.5">
+                                        {recommendations.bifurcation.recommendation}
+                                    </Badge>
                                     {recommendations.bifurcation.discretionary && (
                                         <Badge variant="secondary" className="text-xs">Discretionary</Badge>
                                     )}
                                 </div>
-                                <p className="text-sm text-muted-foreground leading-relaxed mb-2">
+                                <p className="text-sm text-muted-foreground leading-relaxed mt-3">
                                     {recommendations.bifurcation.reasoning}
                                 </p>
                                 {recommendations.bifurcation.historical_context && (
-                                    <p className="text-xs text-primary/80 bg-primary/5 p-2 rounded">
+                                    <p className="text-xs text-primary/80 bg-primary/5 p-2 rounded mt-2">
                                         <Info className="h-3 w-3 inline mr-1" />
                                         {recommendations.bifurcation.historical_context}
                                     </p>
@@ -396,9 +400,11 @@ export function RecommendationDisplay({ data }: { data: string }) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            <div>
-                                <Badge className="mb-2 capitalize">{recommendations.hearing_format.recommendation}</Badge>
-                                <p className="text-sm text-muted-foreground leading-relaxed">
+                            <div className="space-y-2">
+                                <Badge className="capitalize max-w-full wrap-break-word whitespace-normal h-auto py-1.5">
+                                    {recommendations.hearing_format.recommendation}
+                                </Badge>
+                                <p className="text-sm text-muted-foreground leading-relaxed mt-3">
                                     {recommendations.hearing_format.reasoning}
                                 </p>
                             </div>
