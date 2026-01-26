@@ -430,7 +430,7 @@ export function CaseAnalyzer() {
                                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
                                         <div className="h-2 w-2 bg-primary rounded-full animate-pulse"></div>
                                         <span className="text-sm font-medium text-primary">
-                                            AI is analyzing your document...
+                                            AI is analyzing your document, this may take upto 5 mins... 
                                         </span>
                                     </div>
                                 </div>

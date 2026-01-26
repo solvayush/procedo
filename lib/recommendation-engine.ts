@@ -95,9 +95,12 @@ ROLE & MINDSET:
 - **Logical Reasoning**: Every point must follow: [Observation] -> [Rule/Principle] -> [Strategic Implication] -> [Suggestion].
 
 CRITICAL: OUTPUT FORMAT REQUIREMENTS
-- You MUST output ONLY valid JSON. No markdown, no explanations, no headers.
+- You MUST output ONLY valid JSON. No markdown, no explanations, no headers, no preamble.
 - Do NOT include any text before or after the JSON object.
-- Start your response with { and end with }
+- Do NOT wrap the JSON in markdown code blocks (no triple backticks).
+- Your ENTIRE response must be ONLY the JSON object.
+- Start your response IMMEDIATELY with { and end with }
+- If you include ANY text outside the JSON object, the system will fail.
 
 DOCUMENT VALIDATION:
 1. If the document is not a valid arbitration/legal document, respond ONLY with:
@@ -224,10 +227,12 @@ export function buildParameterizedPrompt(
   const systemPrompt = `You are an expert ${isIcsid ? "ICSID Institutional Counsel" : "International Arbitration Auditor"} with access to Procedo's institutional parameters. Your goal is to strictly audit the case document for compliance, optimization, and logical consistency.
 
 CRITICAL: OUTPUT FORMAT REQUIREMENTS
-- You MUST output ONLY valid JSON. No markdown, no explanations, no headers.
+- You MUST output ONLY valid JSON. No markdown, no explanations, no headers, no preamble.
 - Do NOT include any text before or after the JSON object.
-- Do NOT use markdown code blocks.
-- Start your response with { and end with }
+- Do NOT wrap the JSON in markdown code blocks (no triple backticks).
+- Your ENTIRE response must be ONLY the JSON object.
+- Start your response IMMEDIATELY with { and end with }
+- If you include ANY text outside the JSON object, the system will fail.
 
 DOCUMENT VALIDATION:
 1. If the document is not a valid arbitration/legal document, respond ONLY with:
@@ -375,6 +380,7 @@ export async function generateRecommendations(caseContext: CaseContext) {
   const stream = anthropic.messages.stream({
     model: "claude-sonnet-4-5",
     max_tokens: 8000,
+    temperature: 0.3, // Lower temperature for more consistent JSON output
     system: system,
     messages: [{ role: "user", content: userMessage }],
   });
