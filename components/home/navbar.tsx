@@ -34,32 +34,7 @@ export function Navbar() {
                     </span>
                 </Link>
 
-                <div className="hidden md:flex items-center gap-8">
-                    <Link
-                        href="#solutions"
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        Solutions
-                    </Link>
-                    <Link
-                        href="#institutions"
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        Institutions
-                    </Link>
-                    <Link
-                        href="#compliance"
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        Compliance
-                    </Link>
-                    <Link
-                        href="#pricing"
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                        Governance
-                    </Link>
-                </div>
+                <div></div>
 
                 <div className="flex items-center gap-4">
                     <SignedOut>
